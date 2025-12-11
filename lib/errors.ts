@@ -1,4 +1,6 @@
 // lib/errors.ts
+import { z } from 'zod' // <-- أضف هذا
+
 export class AppError extends Error {
   constructor(
     public message: string,
