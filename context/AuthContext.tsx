@@ -1,4 +1,3 @@
-// context/AuthContext.tsx
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react'
@@ -53,7 +52,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+
   const router = useRouter()
   const pathname = usePathname()
 
@@ -67,10 +68,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const data = await response.json()
         if (data.success) {
           setUser(data.data)
+          setIsAuthenticated(true)
+        } else {
+          setUser(null)
+          setIsAuthenticated(false)
         }
+      } else {
+        setUser(null)
+        setIsAuthenticated(false)
       }
     } catch (error) {
       console.error('Failed to fetch user:', error)
+      setUser(null)
+      setIsAuthenticated(false)
     } finally {
       setIsLoading(false)
     }
@@ -81,13 +91,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [fetchUser])
 
   useEffect(() => {
-    // Redirect logic based on authentication state
     if (!isLoading) {
       const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email']
       const isPublicPath = publicPaths.some(path => pathname?.startsWith(path))
 
       if (isAuthenticated && isPublicPath) {
-        // Redirect authenticated users away from auth pages
         const rolePaths = {
           PLAYER: '/dashboard/player',
           OWNER: '/dashboard/owner',
@@ -97,7 +105,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const redirectPath = rolePaths[user?.role as keyof typeof rolePaths] || '/dashboard'
         router.push(redirectPath)
       } else if (!isAuthenticated && !isPublicPath && pathname !== '/') {
-        // Redirect unauthenticated users to login
         router.push('/login')
       }
     }
@@ -122,7 +129,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await fetchUser()
       toast.success('Login successful!')
 
-      // Redirect based on role
       const role = data.data.user.role
       const rolePaths = {
         PLAYER: '/dashboard/player',
@@ -130,7 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         EMPLOYEE: '/dashboard/employee',
         ADMIN: '/dashboard/admin'
       }
-      
+
       router.push(rolePaths[role as keyof typeof rolePaths] || '/dashboard')
 
     } catch (error: any) {
@@ -157,10 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(result.message)
       }
 
-      toast.success('Registration successful! Please check your email to verify your account.')
-      
-      // Optional: Auto login after registration
-      // await login(data.email, data.password)
+      toast.success('Registration successful! Please check your email.')
       router.push('/login?registered=true')
 
     } catch (error: any) {
@@ -179,6 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
 
       setUser(null)
+      setIsAuthenticated(false)
       toast.success('Logged out successfully')
       router.push('/login')
     } catch (error) {
@@ -200,7 +204,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(data.message)
       }
 
-      toast.success('Password reset instructions sent to your email')
+      toast.success('Password reset instructions sent')
     } catch (error: any) {
       toast.error(error.message || 'Failed to send reset instructions')
       throw error
@@ -298,7 +302,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value: AuthContextType = {
     user,
-    isAuthenticated: !!user,
+    isAuthenticated,
     isLoading,
     login,
     register,
