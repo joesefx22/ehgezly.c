@@ -3,12 +3,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { 
   hashPassword, 
-  generateSecureToken, 
-  getTokenExpiry,
   validatePasswordStrength 
 } from '@/lib/auth'
 import { registerSchema } from '@/lib/validators'
-import { emailService } from '@/lib/email'
 import { rateLimiter } from '@/lib/rate-limit'
 import { handleError, ValidationError, ConflictError } from '@/lib/errors'
 import { successResponse, errorResponse } from '@/lib/responses'
@@ -28,16 +25,25 @@ export const POST = withAudit(async (request: NextRequest) => {
     // Check password strength
     const passwordCheck = validatePasswordStrength(validatedData.password)
     if (!passwordCheck.isValid) {
-      throw new ValidationError('Password does not meet requirements', passwordCheck.errors)
+      throw new ValidationError('كلمة المرور لا تلبي المتطلبات', passwordCheck.errors)
     }
 
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
+    // Check if email already exists
+    const existingEmail = await prisma.user.findUnique({
       where: { email: validatedData.email }
     })
 
-    if (existingUser) {
-      throw new ConflictError('User with this email already exists')
+    if (existingEmail) {
+      throw new ConflictError('البريد الإلكتروني مستخدم بالفعل')
+    }
+
+    // Check if phone number already exists
+    const existingPhone = await prisma.user.findUnique({
+      where: { phoneNumber: validatedData.phoneNumber }
+    })
+
+    if (existingPhone) {
+      throw new ConflictError('رقم الهاتف مستخدم بالفعل')
     }
 
     // Hash password
@@ -49,34 +55,12 @@ export const POST = withAudit(async (request: NextRequest) => {
         name: validatedData.name,
         email: validatedData.email,
         password: hashedPassword,
-        role: validatedData.role
+        phoneNumber: validatedData.phoneNumber,
+        age: validatedData.age,
+        description: validatedData.description || '',
+        skillLevel: validatedData.skillLevel,
+        role: 'PLAYER' // الـ role ثابت للجميع عند التسجيل
       }
-    })
-
-    // Generate email verification token
-    const verificationToken = generateSecureToken()
-    const tokenExpiry = getTokenExpiry(24) // 24 hours
-
-    await prisma.token.create({
-      data: {
-        userId: user.id,
-        token: verificationToken,
-        type: 'EMAIL_VERIFICATION',
-        expiresAt: tokenExpiry
-      }
-    })
-
-    // Send verification email
-    const verificationLink = `${process.env.APP_URL}/verify-email/${verificationToken}`
-    const emailContent = emailService.getVerificationEmail(
-      user.name,
-      verificationLink
-    )
-
-    await emailService.sendEmail({
-      to: user.email,
-      subject: 'Verify Your Email Address',
-      html: emailContent
     })
 
     // Log registration
@@ -86,17 +70,25 @@ export const POST = withAudit(async (request: NextRequest) => {
       'USER',
       user.id,
       null,
-      { email: user.email, role: user.role },
+      { 
+        email: user.email, 
+        phoneNumber: user.phoneNumber,
+        skillLevel: user.skillLevel,
+        age: user.age 
+      },
       getClientIp(request),
       request.headers.get('user-agent') || undefined
     )
 
     return NextResponse.json(
-      successResponse('Registration successful. Please check your email to verify your account.', {
+      successResponse('تم التسجيل بنجاح! يمكنك تسجيل الدخول الآن.', {
         user: {
           id: user.id,
           name: user.name,
           email: user.email,
+          phoneNumber: user.phoneNumber,
+          age: user.age,
+          skillLevel: user.skillLevel,
           role: user.role
         }
       }),
