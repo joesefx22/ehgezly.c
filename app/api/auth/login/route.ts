@@ -41,17 +41,17 @@ export const POST = withAudit(async (request: NextRequest) => {
 
     if (!user) {
       await incrementLoginAttempts('unknown', 5, 15) // Track failed attempts
-      throw new AuthenticationError('Invalid email or password')
+      throw new AuthenticationError('البريد الإلكتروني أو كلمة المرور غير صحيحة')
     }
 
     // Check if account is locked
     if (isAccountLocked(user.lockedUntil)) {
-      throw new AuthenticationError('Account is temporarily locked. Please try again later.')
+      throw new AuthenticationError('الحساب مؤقتاً مغلق. حاول مرة أخرى لاحقاً.')
     }
 
     // Check if account is active
     if (!user.isActive) {
-      throw new AuthenticationError('Account is deactivated')
+      throw new AuthenticationError('الحساب غير نشط')
     }
 
     // Verify password
@@ -59,13 +59,13 @@ export const POST = withAudit(async (request: NextRequest) => {
     
     if (!isPasswordValid) {
       await incrementLoginAttempts(user.id, 5, 15)
-      throw new AuthenticationError('Invalid email or password')
+      throw new AuthenticationError('البريد الإلكتروني أو كلمة المرور غير صحيحة')
     }
 
-    // Check if email is verified (optional, depending on requirements)
-    if (!user.isVerified) {
-      throw new AuthenticationError('Please verify your email address first')
-    }
+    // No email verification required - تم إزالة هذا الشرط
+    // if (!user.isVerified) {
+    //   throw new AuthenticationError('Please verify your email address first')
+    // }
 
     // Reset login attempts on successful login
     await resetLoginAttempts(user.id)
@@ -96,13 +96,16 @@ export const POST = withAudit(async (request: NextRequest) => {
 
     // Prepare response
     const response = NextResponse.json(
-      successResponse('Login successful', {
+      successResponse('تم تسجيل الدخول بنجاح', {
         user: {
           id: user.id,
           name: user.name,
           email: user.email,
+          phoneNumber: user.phoneNumber,
+          age: user.age,
+          description: user.description,
+          skillLevel: user.skillLevel,
           role: user.role,
-          isVerified: user.isVerified,
           lastLogin: user.lastLogin
         }
       })
