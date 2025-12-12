@@ -1,4 +1,5 @@
-import { ReactNode } from 'react'
+// components/ui/Alert.tsx
+import { AlertTriangle, CheckCircle, Info, XCircle } from 'lucide-react'
 import { cn } from '@/utils/helpers'
 
 interface AlertProps {
@@ -8,32 +9,66 @@ interface AlertProps {
   className?: string
 }
 
-const typeStyles = {
-  success: 'bg-green-50 border-green-200 text-green-800',
-  error: 'bg-red-50 border-red-200 text-red-800',
-  warning: 'bg-yellow-50 border-yellow-200 text-yellow-800',
-  info: 'bg-blue-50 border-blue-200 text-blue-800'
-}
-
-const typeIcons = {
-  success: '✅',
-  error: '❌',
-  warning: '⚠️',
-  info: 'ℹ️'
+const typeConfig = {
+  success: {
+    bg: 'bg-green-500/10',
+    border: 'border-green-500/30',
+    text: 'text-green-400',
+    icon: CheckCircle,
+    iconColor: 'text-green-400',
+    iconBg: 'bg-green-500/20'
+  },
+  error: {
+    bg: 'bg-red-500/10',
+    border: 'border-red-500/30',
+    text: 'text-red-400',
+    icon: XCircle,
+    iconColor: 'text-red-400',
+    iconBg: 'bg-red-500/20'
+  },
+  warning: {
+    bg: 'bg-yellow-500/10',
+    border: 'border-yellow-500/30',
+    text: 'text-yellow-400',
+    icon: AlertTriangle,
+    iconColor: 'text-yellow-400',
+    iconBg: 'bg-yellow-500/20'
+  },
+  info: {
+    bg: 'bg-blue-500/10',
+    border: 'border-blue-500/30',
+    text: 'text-blue-400',
+    icon: Info,
+    iconColor: 'text-blue-400',
+    iconBg: 'bg-blue-500/20'
+  }
 }
 
 export default function Alert({ type, title, message, className }: AlertProps) {
+  const config = typeConfig[type]
+  const Icon = config.icon
+
   return (
     <div className={cn(
-      "rounded-lg border p-4",
-      typeStyles[type],
+      "rounded-xl border p-4 backdrop-blur-sm",
+      config.bg,
+      config.border,
       className
     )}>
-      <div className="flex items-start">
-        <div className="mr-3 mt-0.5">{typeIcons[type]}</div>
-        <div>
-          <h4 className="font-medium">{title}</h4>
-          <p className="text-sm mt-1">{message}</p>
+      <div className="flex items-start gap-3">
+        <div className={cn(
+          "p-2 rounded-lg flex-shrink-0",
+          config.iconBg
+        )}>
+          <Icon className={cn("w-5 h-5", config.iconColor)} />
+        </div>
+        <div className="flex-1">
+          <h4 className={cn("font-semibold mb-1", config.text)}>
+            {title}
+          </h4>
+          <p className={cn("text-sm", config.text)}>
+            {message}
+          </p>
         </div>
       </div>
     </div>
