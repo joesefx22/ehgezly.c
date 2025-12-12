@@ -1,3 +1,4 @@
+// context/AuthContext.tsx
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react'
@@ -8,8 +9,11 @@ interface User {
   id: string
   name: string
   email: string
+  phoneNumber: string
+  age: number
+  description?: string
+  skillLevel: string
   role: string
-  isVerified: boolean
   isActive: boolean
   lastLogin?: string
 }
@@ -22,11 +26,8 @@ interface AuthContextType {
   register: (data: RegisterData) => Promise<void>
   logout: () => Promise<void>
   refreshUser: () => Promise<void>
-  forgotPassword: (email: string) => Promise<void>
-  resetPassword: (token: string, password: string, confirmPassword: string) => Promise<void>
   updateProfile: (data: UpdateProfileData) => Promise<void>
   changePassword: (data: ChangePasswordData) => Promise<void>
-  resendVerification: () => Promise<void>
 }
 
 interface RegisterData {
@@ -34,12 +35,19 @@ interface RegisterData {
   email: string
   password: string
   confirmPassword: string
-  role: string
+  phoneNumber: string
+  age: number
+  description?: string
+  skillLevel: string
 }
 
 interface UpdateProfileData {
   name?: string
   email?: string
+  phoneNumber?: string
+  age?: number
+  description?: string
+  skillLevel?: string
 }
 
 interface ChangePasswordData {
@@ -92,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isLoading) {
-      const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email']
+      const publicPaths = ['/login', '/register', '/']
       const isPublicPath = publicPaths.some(path => pathname?.startsWith(path))
 
       if (isAuthenticated && isPublicPath) {
@@ -126,8 +134,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(data.message)
       }
 
-      await fetchUser()
-      toast.success('Login successful!')
+      setUser(data.data.user)
+      setIsAuthenticated(true)
+      toast.success('تم تسجيل الدخول بنجاح!')
 
       const role = data.data.user.role
       const rolePaths = {
@@ -140,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       router.push(rolePaths[role as keyof typeof rolePaths] || '/dashboard')
 
     } catch (error: any) {
-      toast.error(error.message || 'Login failed')
+      toast.error(error.message || 'فشل تسجيل الدخول')
       throw error
     } finally {
       setIsLoading(false)
@@ -163,11 +172,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(result.message)
       }
 
-      toast.success('Registration successful! Please check your email.')
+      toast.success('تم التسجيل بنجاح! يمكنك تسجيل الدخول الآن.')
       router.push('/login?registered=true')
 
     } catch (error: any) {
-      toast.error(error.message || 'Registration failed')
+      toast.error(error.message || 'فشل في التسجيل')
       throw error
     } finally {
       setIsLoading(false)
@@ -183,53 +192,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setUser(null)
       setIsAuthenticated(false)
-      toast.success('Logged out successfully')
+      toast.success('تم تسجيل الخروج بنجاح')
       router.push('/login')
     } catch (error) {
-      toast.error('Logout failed')
-    }
-  }
-
-  const forgotPassword = async (email: string) => {
-    try {
-      const response = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      })
-
-      const data = await response.json()
-
-      if (!data.success) {
-        throw new Error(data.message)
-      }
-
-      toast.success('Password reset instructions sent')
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to send reset instructions')
-      throw error
-    }
-  }
-
-  const resetPassword = async (token: string, password: string, confirmPassword: string) => {
-    try {
-      const response = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, password, confirmPassword })
-      })
-
-      const data = await response.json()
-
-      if (!data.success) {
-        throw new Error(data.message)
-      }
-
-      toast.success('Password reset successfully')
-      router.push('/login')
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to reset password')
-      throw error
+      toast.error('فشل تسجيل الخروج')
     }
   }
 
@@ -249,9 +215,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setUser(result.data)
-      toast.success('Profile updated successfully')
+      toast.success('تم تحديث الملف الشخصي بنجاح')
     } catch (error: any) {
-      toast.error(error.message || 'Failed to update profile')
+      toast.error(error.message || 'فشل تحديث الملف الشخصي')
       throw error
     }
   }
@@ -271,31 +237,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(result.message)
       }
 
-      toast.success('Password changed successfully')
+      toast.success('تم تغيير كلمة المرور بنجاح')
     } catch (error: any) {
-      toast.error(error.message || 'Failed to change password')
-      throw error
-    }
-  }
-
-  const resendVerification = async () => {
-    try {
-      const response = await fetch('/api/auth/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: user?.email }),
-        credentials: 'include'
-      })
-
-      const result = await response.json()
-
-      if (!result.success) {
-        throw new Error(result.message)
-      }
-
-      toast.success('Verification email sent')
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to resend verification')
+      toast.error(error.message || 'فشل تغيير كلمة المرور')
       throw error
     }
   }
@@ -308,11 +252,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     register,
     logout,
     refreshUser: fetchUser,
-    forgotPassword,
-    resetPassword,
     updateProfile,
-    changePassword,
-    resendVerification
+    changePassword
+    // Removed: forgotPassword, resetPassword, resendVerification
   }
 
   return (
