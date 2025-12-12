@@ -8,6 +8,16 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { registerSchema, RegisterInput } from '@/lib/validators'
 import { useAuth } from '@/context/AuthContext'
+import { 
+  User, 
+  Mail, 
+  Lock, 
+  Phone, 
+  Calendar,
+  Star,
+  FileText,
+  ShieldCheck
+} from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Card from '@/components/ui/Card'
@@ -16,6 +26,7 @@ import Alert from '@/components/ui/Alert'
 export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [skillLevel, setSkillLevel] = useState('AVERAGE')
   const { register: registerUser, isAuthenticated } = useAuth()
   const router = useRouter()
   
@@ -23,7 +34,8 @@ export default function RegisterPage() {
     register,
     handleSubmit,
     formState: { errors },
-    watch
+    watch,
+    setValue
   } = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -31,7 +43,10 @@ export default function RegisterPage() {
       email: '',
       password: '',
       confirmPassword: '',
-      role: 'PLAYER'
+      phoneNumber: '',
+      age: undefined,
+      description: '',
+      skillLevel: 'AVERAGE'
     }
   })
 
@@ -42,6 +57,7 @@ export default function RegisterPage() {
   }
 
   const password = watch('password')
+  const age = watch('age')
 
   const onSubmit = async (data: RegisterInput) => {
     setIsLoading(true)
@@ -50,181 +66,316 @@ export default function RegisterPage() {
     try {
       await registerUser(data)
     } catch (err: any) {
-      setError(err.message || 'Registration failed')
+      setError(err.message || 'فشل في التسجيل')
     } finally {
       setIsLoading(false)
     }
   }
 
+  const skillLevels = [
+    { value: 'WEAK', label: 'ضعيف', color: 'from-gray-400 to-gray-500', icon: '😅' },
+    { value: 'AVERAGE', label: 'متوسط', color: 'from-blue-400 to-blue-500', icon: '😊' },
+    { value: 'GOOD', label: 'جيد', color: 'from-green-400 to-green-500', icon: '😎' },
+    { value: 'EXCELLENT', label: 'ممتاز', color: 'from-purple-400 to-purple-500', icon: '🔥' },
+    { value: 'LEGENDARY', label: 'أسطوري', color: 'from-orange-400 to-orange-500', icon: '👑' }
+  ]
+
+  const passwordChecks = [
+    { label: '8 أحرف على الأقل', check: password?.length >= 8 },
+    { label: 'حرف كبير (A-Z)', check: /[A-Z]/.test(password || '') },
+    { label: 'حرف صغير (a-z)', check: /[a-z]/.test(password || '') },
+    { label: 'رقم (0-9)', check: /[0-9]/.test(password || '') },
+    { label: 'رمز خاص (!@#$)', check: /[^A-Za-z0-9]/.test(password || '') }
+  ]
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl">
-        <Card className="p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Create Account</h1>
-            <p className="text-gray-600 mt-2">Choose your role and start your journey</p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-violet-900 flex items-center justify-center p-4">
+      <div className="w-full max-w-4xl">
+        <div className="grid md:grid-cols-2 gap-8">
+          {/* Left Side - Welcome */}
+          <div className="flex flex-col justify-center text-white p-8">
+            <div className="mb-10">
+              <h1 className="text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+                أنشئ حسابك
+              </h1>
+              <p className="text-xl text-gray-300 mb-6">
+                انضم إلى مجتمعنا وابدأ رحلتك في عالم الألعاب
+              </p>
+            </div>
+            
+            <div className="space-y-6">
+              <div className="flex items-center space-x-4">
+                <div className="p-3 bg-blue-500/20 rounded-xl">
+                  <ShieldCheck className="w-8 h-8 text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">حماية وأمان</h3>
+                  <p className="text-gray-400">بياناتك مشفرة وآمنة تماماً</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-4">
+                <div className="p-3 bg-purple-500/20 rounded-xl">
+                  <Star className="w-8 h-8 text-purple-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">تقييم مهاراتك</h3>
+                  <p className="text-gray-400">اختر مستوى مهارتك واحصل على تحديات مناسبة</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-4">
+                <div className="p-3 bg-green-500/20 rounded-xl">
+                  <User className="w-8 h-8 text-green-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">ملف شخصي متكامل</h3>
+                  <p className="text-gray-400">أنشئ ملفاً شخصياً يعبر عنك</p>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {error && (
-            <Alert 
-              type="error" 
-              title="Registration Failed" 
-              message={error} 
-              className="mb-6"
-            />
-          )}
-
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Input
-                label="Full Name"
-                type="text"
-                placeholder="John Doe"
-                error={errors.name?.message}
-                {...register('name')}
-                disabled={isLoading}
-              />
-
-              <Input
-                label="Email Address"
-                type="email"
-                placeholder="you@example.com"
-                error={errors.email?.message}
-                {...register('email')}
-                disabled={isLoading}
-              />
+          {/* Right Side - Form */}
+          <Card className="p-8 bg-white/10 backdrop-blur-lg border border-white/20">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-white">تسجيل جديد</h2>
+              <p className="text-gray-300 mt-2">املأ البيانات لإنشاء حسابك</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Input
-                label="Password"
-                type="password"
-                placeholder="••••••••"
-                error={errors.password?.message}
-                {...register('password')}
-                disabled={isLoading}
-                helperText="Min. 8 chars with uppercase, lowercase, number & special char"
+            {error && (
+              <Alert 
+                type="error" 
+                title="خطأ في التسجيل" 
+                message={error} 
+                className="mb-6"
               />
+            )}
 
-              <Input
-                label="Confirm Password"
-                type="password"
-                placeholder="••••••••"
-                error={errors.confirmPassword?.message}
-                {...register('confirmPassword')}
-                disabled={isLoading}
-              />
-            </div>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              {/* Basic Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="relative">
+                  <div className="absolute right-3 top-3 text-gray-400">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <Input
+                    label="الاسم الكامل"
+                    type="text"
+                    placeholder="أحمد محمد"
+                    error={errors.name?.message}
+                    {...register('name')}
+                    disabled={isLoading}
+                    className="bg-white/5 border-white/20 text-white pr-10"
+                  />
+                </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                I am a:
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[
-                  { value: 'PLAYER', label: '🎮 Player', desc: 'Play games & tournaments' },
-                  { value: 'OWNER', label: '🏟️ Owner', desc: 'Manage stadiums & earnings' },
-                  { value: 'EMPLOYEE', label: '👨‍💼 Employee', desc: 'Handle bookings & support' },
-                  { value: 'ADMIN', label: '🛡️ Admin', desc: 'System administration' }
-                ].map((role) => (
-                  <label
-                    key={role.value}
-                    className={`
-                      relative flex flex-col p-4 border-2 rounded-lg cursor-pointer
-                      transition-all hover:border-blue-500 hover:bg-blue-50
-                      ${watch('role') === role.value 
-                        ? 'border-blue-500 bg-blue-50' 
-                        : 'border-gray-200'
-                      }
-                    `}
-                  >
-                    <input
-                      type="radio"
-                      value={role.value}
-                      className="sr-only"
-                      {...register('role')}
-                      disabled={isLoading}
-                    />
-                    <div className="text-lg mb-2">{role.label.split(' ')[0]}</div>
-                    <div className="text-sm font-medium">{role.label.split(' ')[1]}</div>
-                    <div className="text-xs text-gray-500 mt-1">{role.desc}</div>
-                  </label>
-                ))}
+                <div className="relative">
+                  <div className="absolute right-3 top-3 text-gray-400">
+                    <Mail className="w-5 h-5" />
+                  </div>
+                  <Input
+                    label="البريد الإلكتروني"
+                    type="email"
+                    placeholder="ahmed@example.com"
+                    error={errors.email?.message}
+                    {...register('email')}
+                    disabled={isLoading}
+                    className="bg-white/5 border-white/20 text-white pr-10"
+                  />
+                </div>
+
+                <div className="relative">
+                  <div className="absolute right-3 top-3 text-gray-400">
+                    <Phone className="w-5 h-5" />
+                  </div>
+                  <Input
+                    label="رقم الهاتف"
+                    type="tel"
+                    placeholder="+20 100 000 0000"
+                    error={errors.phoneNumber?.message}
+                    {...register('phoneNumber')}
+                    disabled={isLoading}
+                    className="bg-white/5 border-white/20 text-white pr-10"
+                  />
+                </div>
+
+                <div className="relative">
+                  <div className="absolute right-3 top-3 text-gray-400">
+                    <Calendar className="w-5 h-5" />
+                  </div>
+                  <Input
+                    label="العمر"
+                    type="number"
+                    placeholder="25"
+                    min="13"
+                    max="100"
+                    error={errors.age?.message}
+                    {...register('age', { valueAsNumber: true })}
+                    disabled={isLoading}
+                    className="bg-white/5 border-white/20 text-white pr-10"
+                  />
+                </div>
               </div>
-              {errors.role?.message && (
-                <p className="text-sm text-red-600 mt-2">{errors.role.message}</p>
-              )}
-            </div>
 
-            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <h4 className="font-medium text-blue-800 mb-2">Password Requirements:</h4>
-              <ul className="text-sm text-blue-700 space-y-1">
-                <li className={`flex items-center ${password?.length >= 8 ? 'text-green-600' : ''}`}>
-                  <span className="mr-2">•</span>
-                  At least 8 characters long
-                </li>
-                <li className={`flex items-center ${/[A-Z]/.test(password || '') ? 'text-green-600' : ''}`}>
-                  <span className="mr-2">•</span>
-                  One uppercase letter (A-Z)
-                </li>
-                <li className={`flex items-center ${/[a-z]/.test(password || '') ? 'text-green-600' : ''}`}>
-                  <span className="mr-2">•</span>
-                  One lowercase letter (a-z)
-                </li>
-                <li className={`flex items-center ${/[0-9]/.test(password || '') ? 'text-green-600' : ''}`}>
-                  <span className="mr-2">•</span>
-                  One number (0-9)
-                </li>
-                <li className={`flex items-center ${/[^A-Za-z0-9]/.test(password || '') ? 'text-green-600' : ''}`}>
-                  <span className="mr-2">•</span>
-                  One special character (!@#$% etc.)
-                </li>
-              </ul>
-            </div>
+              {/* Password */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="relative">
+                  <div className="absolute right-3 top-3 text-gray-400">
+                    <Lock className="w-5 h-5" />
+                  </div>
+                  <Input
+                    label="كلمة المرور"
+                    type="password"
+                    placeholder="••••••••"
+                    error={errors.password?.message}
+                    {...register('password')}
+                    disabled={isLoading}
+                    className="bg-white/5 border-white/20 text-white pr-10"
+                  />
+                </div>
 
-            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="flex items-start">
-                <input
-                  type="checkbox"
-                  id="terms"
-                  className="mt-1 mr-3"
-                  required
-                />
-                <label htmlFor="terms" className="text-sm text-gray-600">
-                  I agree to the{' '}
-                  <Link href="/terms" className="text-blue-600 hover:underline">
-                    Terms of Service
-                  </Link>{' '}
-                  and{' '}
-                  <Link href="/privacy" className="text-blue-600 hover:underline">
-                    Privacy Policy
-                  </Link>
+                <div className="relative">
+                  <div className="absolute right-3 top-3 text-gray-400">
+                    <Lock className="w-5 h-5" />
+                  </div>
+                  <Input
+                    label="تأكيد كلمة المرور"
+                    type="password"
+                    placeholder="••••••••"
+                    error={errors.confirmPassword?.message}
+                    {...register('confirmPassword')}
+                    disabled={isLoading}
+                    className="bg-white/5 border-white/20 text-white pr-10"
+                  />
+                </div>
+              </div>
+
+              {/* Password Requirements */}
+              <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                <h4 className="font-medium text-white mb-3 flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4" />
+                  متطلبات كلمة المرور
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                  {passwordChecks.map((check, index) => (
+                    <div 
+                      key={index}
+                      className={`text-xs p-2 rounded-lg text-center ${
+                        check.check 
+                          ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
+                          : 'bg-red-500/10 text-red-300 border border-red-500/20'
+                      }`}
+                    >
+                      {check.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Skill Level */}
+              <div>
+                <label className="block text-sm font-medium text-white mb-3">
+                  <Star className="w-4 h-4 inline ml-1" />
+                  مستوى المهارة
                 </label>
+                <div className="grid grid-cols-5 gap-2">
+                  {skillLevels.map((level) => (
+                    <button
+                      type="button"
+                      key={level.value}
+                      onClick={() => {
+                        setSkillLevel(level.value)
+                        setValue('skillLevel', level.value)
+                      }}
+                      className={`
+                        relative flex flex-col items-center p-3 rounded-xl border-2
+                        transition-all duration-300 transform hover:scale-105
+                        ${skillLevel === level.value 
+                          ? `border-white bg-gradient-to-br ${level.color} shadow-lg` 
+                          : 'border-white/20 bg-white/5 hover:bg-white/10'
+                        }
+                      `}
+                    >
+                      <div className="text-2xl mb-1">{level.icon}</div>
+                      <div className="text-xs font-medium text-white">{level.label}</div>
+                    </button>
+                  ))}
+                </div>
+                {errors.skillLevel?.message && (
+                  <p className="text-sm text-red-400 mt-2">{errors.skillLevel.message}</p>
+                )}
               </div>
-            </div>
 
-            <Button
-              type="submit"
-              className="w-full"
-              loading={isLoading}
-              disabled={isLoading}
-            >
-              Create Account
-            </Button>
-          </form>
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">
+                  <FileText className="w-4 h-4 inline ml-1" />
+                  الوصف الشخصي (اختياري)
+                </label>
+                <textarea
+                  placeholder="أخبرنا عن نفسك، هواياتك، ومهاراتك..."
+                  rows={3}
+                  maxLength={500}
+                  {...register('description')}
+                  disabled={isLoading}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl
+                           text-white placeholder-gray-400 focus:outline-none 
+                           focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                           transition-all resize-none"
+                />
+                <div className="text-xs text-gray-400 mt-1 text-left">
+                  {watch('description')?.length || 0}/500 حرف
+                </div>
+              </div>
 
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <p className="text-center text-gray-600 text-sm">
-              Already have an account?{' '}
-              <Link
-                href="/login"
-                className="font-medium text-blue-600 hover:text-blue-500"
+              {/* Terms */}
+              <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                <div className="flex items-start">
+                  <input
+                    type="checkbox"
+                    id="terms"
+                    className="mt-1 ml-3 w-4 h-4"
+                    required
+                  />
+                  <label htmlFor="terms" className="text-sm text-gray-300">
+                    أوافق على{' '}
+                    <Link href="/terms" className="text-blue-400 hover:text-blue-300 underline">
+                      شروط الخدمة
+                    </Link>{' '}
+                    و{' '}
+                    <Link href="/privacy" className="text-blue-400 hover:text-blue-300 underline">
+                      سياسة الخصوصية
+                    </Link>
+                  </label>
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-500
+                         hover:from-blue-600 hover:to-purple-600 text-white font-semibold
+                         rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                loading={isLoading}
+                disabled={isLoading}
               >
-                Sign in
-              </Link>
-            </p>
-          </div>
-        </Card>
+                {isLoading ? 'جاري الإنشاء...' : 'إنشاء الحساب'}
+              </Button>
+            </form>
+
+            <div className="mt-8 pt-6 border-t border-white/20">
+              <p className="text-center text-gray-300 text-sm">
+                لديك حساب بالفعل؟{' '}
+                <Link
+                  href="/login"
+                  className="font-medium text-blue-400 hover:text-blue-300 underline"
+                >
+                  تسجيل الدخول
+                </Link>
+              </p>
+            </div>
+          </Card>
+        </div>
       </div>
     </div>
   )
