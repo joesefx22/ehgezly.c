@@ -15,9 +15,15 @@ enum Role {
   ADMIN
 }
 
+enum SkillLevel {
+  WEAK
+  AVERAGE
+  GOOD
+  EXCELLENT
+  LEGENDARY
+}
+
 enum TokenType {
-  EMAIL_VERIFICATION
-  PASSWORD_RESET
   REFRESH_TOKEN
 }
 
@@ -26,8 +32,11 @@ model User {
   name                  String
   email                 String    @unique
   password              String
+  phoneNumber          String    @unique
+  age                   Int
+  description          String?
+  skillLevel           SkillLevel  @default(AVERAGE)
   role                  Role      @default(PLAYER)
-  isVerified            Boolean   @default(false)
   isActive              Boolean   @default(true)
   lastLogin             DateTime?
   loginAttempts         Int       @default(0)
@@ -41,6 +50,7 @@ model User {
   
   @@map("users")
   @@index([email])
+  @@index([phoneNumber])
   @@index([createdAt])
 }
 
@@ -78,8 +88,8 @@ model AuditLog {
   id          String   @id @default(cuid())
   userId      String?
   user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  action      String   // LOGIN, LOGOUT, REGISTER, UPDATE, DELETE, etc.
-  entityType  String?  // USER, SESSION, etc.
+  action      String
+  entityType  String?
   entityId    String?
   oldValue    Json?
   newValue    Json?
