@@ -1,4 +1,5 @@
 // prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -23,71 +24,42 @@ enum SkillLevel {
   LEGENDARY
 }
 
-enum TokenType {
-  REFRESH_TOKEN
-}
-
 model User {
-  id                    String    @id @default(cuid())
-  name                  String
-  email                 String    @unique
-  password              String
-  phoneNumber          String    @unique
-  age                   Int
-  description          String?
-  skillLevel           SkillLevel  @default(AVERAGE)
-  role                  Role      @default(PLAYER)
-  isActive              Boolean   @default(true)
-  lastLogin             DateTime?
-  loginAttempts         Int       @default(0)
-  lockedUntil           DateTime?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-  
-  tokens                Token[]
-  sessions              Session[]
-  auditLogs             AuditLog[]
-  
+  id            String      @id @default(cuid())
+  name          String
+  email         String      @unique
+  password      String
+  phoneNumber   String      @unique
+  age           Int
+  description   String?
+  skillLevel    SkillLevel  @default(AVERAGE)
+  role          Role        @default(PLAYER)
+
+  // ✅ Added to match your auth logic
+  isVerified    Boolean     @default(true)
+
+  isActive      Boolean     @default(true)
+  lastLogin     DateTime?
+  loginAttempts Int         @default(0)
+  lockedUntil   DateTime?
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // ✅ Only AuditLog remains — Tokens & Sessions removed
+  auditLogs     AuditLog[]
+
   @@map("users")
   @@index([email])
   @@index([phoneNumber])
   @@index([createdAt])
 }
 
-model Token {
-  id            String    @id @default(cuid())
-  userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token         String    @unique
-  type          TokenType
-  expiresAt     DateTime
-  usedAt        DateTime?
-  createdAt     DateTime  @default(now())
-  
-  @@map("tokens")
-  @@index([token, type])
-  @@index([userId, type])
-}
-
-model Session {
-  id           String   @id @default(cuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token        String   @unique
-  userAgent    String?
-  ipAddress    String?
-  expiresAt    DateTime
-  createdAt    DateTime @default(now())
-  
-  @@map("sessions")
-  @@index([userId])
-  @@index([token])
-}
-
 model AuditLog {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   userId      String?
-  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
   action      String
   entityType  String?
   entityId    String?
@@ -95,8 +67,9 @@ model AuditLog {
   newValue    Json?
   ipAddress   String?
   userAgent   String?
-  createdAt   DateTime @default(now())
-  
+
+  createdAt   DateTime  @default(now())
+
   @@map("audit_logs")
   @@index([userId])
   @@index([action])
