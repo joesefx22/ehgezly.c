@@ -1,8 +1,6 @@
 // middleware.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyAccessToken } from './lib/auth'
-import { securityHeaders } from './lib/security'
-import { getClientIp, getUserAgent } from './lib/security'
+import { securityHeaders, getClientIp, getUserAgent } from './lib/security'
 import { auditLog } from './lib/logger'
 
 // Role-based route mapping
@@ -33,85 +31,66 @@ const authRoutes = [
   '/dashboard',
   '/api/auth/logout',
   '/api/auth/me',
-  '/api/auth/refresh',
   '/api/auth/users'
 ]
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const response = NextResponse.next()
-  
-  // Apply security headers to all responses
+
+  // ✅ Apply security headers
   const headers = securityHeaders()
   Object.entries(headers).forEach(([key, value]) => {
     response.headers.set(key, value)
   })
 
-  // Allow static files and API auth routes
+  // ✅ Allow static files and most API auth routes
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/static') ||
-    pathname.startsWith('/api/auth/') && 
-    !pathname.startsWith('/api/auth/me') &&
-    !pathname.startsWith('/api/auth/logout') &&
-    !pathname.startsWith('/api/auth/refresh') &&
-    !pathname.startsWith('/api/auth/users')
+    (pathname.startsWith('/api/auth/') &&
+      !pathname.startsWith('/api/auth/me') &&
+      !pathname.startsWith('/api/auth/logout') &&
+      !pathname.startsWith('/api/auth/users'))
   ) {
     return response
   }
 
-  // Check if route is public
+  // ✅ Public routes allowed
   if (publicRoutes.includes(pathname) || publicRoutes.some(route => pathname.startsWith(route))) {
     return response
   }
 
-  // Get access token
-  const accessToken = request.cookies.get('accessToken')?.value
-  
-  // If no token and route requires auth, redirect to login
-  if (!accessToken && (authRoutes.includes(pathname) || pathname.startsWith('/dashboard'))) {
+  // ✅ Get userId from cookie (بديل accessToken)
+  const userId = request.cookies.get('userId')?.value
+
+  // ✅ If no userId and route requires auth → redirect
+  if (!userId && (authRoutes.includes(pathname) || pathname.startsWith('/dashboard'))) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  // Verify token if present
-  if (accessToken) {
-    const decoded = verifyAccessToken(accessToken)
-    
-    if (!decoded) {
-      // Token invalid or expired
-      const loginUrl = new URL('/login', request.url)
-      loginUrl.searchParams.set('expired', 'true')
-      const redirectResponse = NextResponse.redirect(loginUrl)
-      
-      // Clear invalid tokens
-      redirectResponse.cookies.delete('accessToken')
-      redirectResponse.cookies.delete('refreshToken')
-      
-      return redirectResponse
-    }
+  // ✅ If userId exists → continue with role-based logic
+  if (userId) {
+    const userRole = request.cookies.get('userRole')?.value as keyof typeof roleBasedRoutes
 
-    const userRole = decoded.role as keyof typeof roleBasedRoutes
-    
-    // Handle /dashboard redirect based on role
+    // ✅ Redirect /dashboard → role dashboard
     if (pathname === '/dashboard') {
       const redirectPath = roleBasedRoutes[userRole]?.[0] || '/dashboard/player'
       return NextResponse.redirect(new URL(redirectPath, request.url))
     }
 
-    // Check role-based access
+    // ✅ Role-based access control
     if (pathname.startsWith('/dashboard')) {
       const allowedRoutes = roleBasedRoutes[userRole] || []
       const hasAccess = allowedRoutes.some(route => pathname.startsWith(route))
-      
+
       if (!hasAccess) {
-        // User doesn't have access to this dashboard
         const redirectPath = allowedRoutes[0] || '/dashboard'
-        
-        // Log unauthorized access attempt
+
         auditLog(
-          decoded.userId,
+          userId,
           'UNAUTHORIZED_ACCESS_ATTEMPT',
           'ROUTE',
           pathname,
@@ -120,17 +99,17 @@ export async function middleware(request: NextRequest) {
           getClientIp(request),
           getUserAgent(request)
         )
-        
+
         return NextResponse.redirect(new URL(redirectPath, request.url))
       }
     }
 
-    // Add user info to headers for API routes
+    // ✅ Add user info to API requests
     if (pathname.startsWith('/api/')) {
       const requestHeaders = new Headers(request.headers)
-      requestHeaders.set('x-user-id', decoded.userId)
-      requestHeaders.set('x-user-role', userRole)
-      
+      requestHeaders.set('x-user-id', userId)
+      if (userRole) requestHeaders.set('x-user-role', userRole)
+
       return NextResponse.next({
         request: {
           headers: requestHeaders
@@ -142,15 +121,11 @@ export async function middleware(request: NextRequest) {
   return response
 }
 
+// ✅ ✅ ✅ FIXED MATCHER ✅ ✅ ✅
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
-    '/((?!_next/static|_next/image|favicon.ico|public).*)',
-  ],
+    '/dashboard',
+    '/dashboard/:path*',
+    '/api/auth/:path*'
+  ]
 }

@@ -1,10 +1,7 @@
 // app/api/auth/register/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { 
-  hashPassword, 
-  validatePasswordStrength 
-} from '@/lib/auth'
+import { hashPassword, validatePasswordStrength } from '@/lib/auth'
 import { registerSchema } from '@/lib/validators'
 import { rateLimiter } from '@/lib/rate-limit'
 import { handleError, ValidationError, ConflictError } from '@/lib/errors'
@@ -14,42 +11,40 @@ import { auditLog } from '@/lib/logger'
 
 export const POST = withAudit(async (request: NextRequest) => {
   try {
-    // Rate limiting
+    // ✅ Rate limit
     const ip = getClientIp(request)
     await rateLimiter.checkForRegister(request, ip)
 
-    // Parse and validate input
+    // ✅ Parse + validate
     const body = await request.json()
     const validatedData = registerSchema.parse(body)
 
-    // Check password strength
+    // ✅ Password strength
     const passwordCheck = validatePasswordStrength(validatedData.password)
     if (!passwordCheck.isValid) {
       throw new ValidationError('كلمة المرور لا تلبي المتطلبات', passwordCheck.errors)
     }
 
-    // Check if email already exists
+    // ✅ Email exists?
     const existingEmail = await prisma.user.findUnique({
       where: { email: validatedData.email }
     })
-
     if (existingEmail) {
       throw new ConflictError('البريد الإلكتروني مستخدم بالفعل')
     }
 
-    // Check if phone number already exists
+    // ✅ Phone exists?
     const existingPhone = await prisma.user.findUnique({
       where: { phoneNumber: validatedData.phoneNumber }
     })
-
     if (existingPhone) {
       throw new ConflictError('رقم الهاتف مستخدم بالفعل')
     }
 
-    // Hash password
+    // ✅ Hash password
     const hashedPassword = await hashPassword(validatedData.password)
 
-    // Create user
+    // ✅ Create user
     const user = await prisma.user.create({
       data: {
         name: validatedData.name,
@@ -59,27 +54,28 @@ export const POST = withAudit(async (request: NextRequest) => {
         age: validatedData.age,
         description: validatedData.description || '',
         skillLevel: validatedData.skillLevel,
-        role: 'PLAYER' // الـ role ثابت للجميع عند التسجيل
+        role: 'PLAYER'
       }
     })
 
-    // Log registration
+    // ✅ Audit log
     auditLog(
       user.id,
       'REGISTER',
       'USER',
       user.id,
       null,
-      { 
-        email: user.email, 
+      {
+        email: user.email,
         phoneNumber: user.phoneNumber,
         skillLevel: user.skillLevel,
-        age: user.age 
+        age: user.age
       },
       getClientIp(request),
       request.headers.get('user-agent') || undefined
     )
 
+    // ✅ Response
     return NextResponse.json(
       successResponse('تم التسجيل بنجاح! يمكنك تسجيل الدخول الآن.', {
         user: {
@@ -97,7 +93,7 @@ export const POST = withAudit(async (request: NextRequest) => {
 
   } catch (error: any) {
     const appError = handleError(error)
-    
+
     return NextResponse.json(
       errorResponse(
         appError.message,
